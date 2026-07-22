@@ -1,0 +1,9 @@
+Team sync, Tuesday
+
+- billing fix finally shipped, two weeks late
+- onboarding still losing users at the email verification step, Marcus to investigate maybe?
+- Priya is out all next week, need cover for on-call
+- we STILL have not decided on pricing for the new tier - someone needs to own this
+- office plants are dying again
+- customer Acme asked for an export-to-CSV feature, sounded urgent
+- retro moved to Thursday
