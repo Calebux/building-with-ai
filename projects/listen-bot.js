@@ -140,12 +140,23 @@ function systemPrompt() {
 async function answer(text) {
   history.push({ role: "user", content: text });
   const messages = [{ role: "system", content: systemPrompt() }, ...history.slice(-10)];
+  let nudged = false;
 
   for (let turn = 1; turn <= MAX_TURNS; turn++) {
     const msg = await callModel(messages);
     messages.push(msg);
 
     if (!msg.tool_calls) {
+      // Some models write the tool call as TEXT instead of calling it.
+      // Without this guard, that gibberish gets sent as the "answer".
+      const fake = /Function\[|```json|"repo"\s*:|"days"\s*:/.test(msg.content || "");
+      if (fake && !nudged) {
+        nudged = true;
+        console.log("    (model wrote a tool call as text — nudging it to call for real)");
+        messages.push({ role: "user",
+          content: "You wrote the tool call as text instead of actually calling the tool. Nothing ran. Call the real tool now, then answer normally." });
+        continue;
+      }
       const final = msg.content || "(no answer)";
       history.push({ role: "assistant", content: final });
       return final;

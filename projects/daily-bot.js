@@ -131,18 +131,34 @@ async function callModel(messages) {
 // ── THE LOOP — same as agent.js, same as always ──
 async function agent(task) {
   const messages = [{ role: "user", content: task }];
+  let sent = false;   // did send_telegram actually run?
+  let nudged = false;
 
   for (let turn = 1; turn <= MAX_TURNS; turn++) {
     const msg = await callModel(messages);
     messages.push(msg);
 
-    if (!msg.tool_calls) return msg.content;
+    if (!msg.tool_calls) {
+      // The job is not done until the report was actually delivered. Models
+      // sometimes write the tool call as text or just stop — catch it here.
+      if (!sent && !nudged) {
+        nudged = true;
+        console.log("  (loop ended without send_telegram — nudging)");
+        messages.push({ role: "user",
+          content: "You have not called the send_telegram tool - nothing was delivered. Call send_telegram now with the complete report." });
+        continue;
+      }
+      return msg.content;
+    }
 
     for (const call of msg.tool_calls) {
       const args = JSON.parse(call.function.arguments || "{}");
       console.log("  → " + call.function.name + " " + JSON.stringify(args).slice(0, 80));
       let result;
-      try { result = String(await toolFns[call.function.name](args)); }
+      try {
+        result = String(await toolFns[call.function.name](args));
+        if (call.function.name === "send_telegram") sent = true;
+      }
       catch (e) { result = "Error: " + e.message; }
       messages.push({ role: "tool", tool_call_id: call.id, content: result });
     }
